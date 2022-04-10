@@ -27,7 +27,14 @@ const MediaItem = ({ media, setMediaFiles }) => {
                             Your browser does not support the video tag.
                         </video>
                         :
-                        <img style={{ width: '100%', maxWidth: 180 }} alt={media.title.raw} src={media.source_url} />
+                        (media.mime_type.includes('audio') ?
+                            <audio controls>
+                                <source src={media.source_url} type={media.mime_type} />
+                                <track kind="captions" />
+                                Your browser does not support the audio element.
+                            </audio>
+                            : <img style={{ width: '100%', maxWidth: 180 }} alt={media.title.raw} src={media.source_url} />
+                        )
                     }
                 </Box>
                 <ListItemText secondaryTypographyProps={{

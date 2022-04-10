@@ -4,8 +4,8 @@ const INIT_STATE = {
   activeDir: 'ltr',
   activeNavbarBg: '#0b70fb', // This can be any color,
   activeSidebarBg: '#ffffff', // This can be any color
-  activeMode: 'dark', // This can be light or dark
-  activeTheme: 'ORANGE_THEME', // BLUE_THEME, GREEN_THEME, RED_THEME, BLACK_THEME, PURPLE_THEME, INDIGO_THEME
+  activeMode: 'light', // This can be light or dark
+  activeTheme: 'BLUE_THEME', // BLUE_THEME, GREEN_THEME, RED_THEME, BLACK_THEME, PURPLE_THEME, INDIGO_THEME
   SidebarWidth: 240,
 };
 

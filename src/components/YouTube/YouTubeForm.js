@@ -1,9 +1,9 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from 'react';
 import {
-    Grid, Button, Stack, IconButton, Collapse, LinearProgress, Box, CircularProgress
+    Grid, Button, Stack, IconButton, Collapse, LinearProgress, Box, CircularProgress, Alert
 } from '@material-ui/core';
 import * as Yup from 'yup';
-import Alert from '@material-ui/lab/Alert';
 import FeatherIcon from 'feather-icons-react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import { useDispatch, useSelector } from 'react-redux';
@@ -29,15 +29,17 @@ const validations = Yup.object().shape({
 })
 
 const uploadVideo = new UploadVideo();
+const statuses = [{ value: 'private', title: 'private' }, { value: 'public', title: 'public' }, { value: 'unlisted', title: 'unlisted' }]
 
 export default function YouTubeForm(props) {
-    const GOOGLE_AUTH = useSelector((state) => state.YTAuthReducer.GOOGLE_AUTH);
+    const { moduleData, mediaFiles, updatePost, saveSocialAuthData } = props
+    const GOOGLE_AUTH = useSelector((state) => state.SocialAuthReducer.you_tube);
     const dispatch = useDispatch();
-    const { moduleData, mediaFiles, updatePost } = props
     const youtubeData = moduleData.acf.youtube_data
-    const statuses = [{ value: 'private', title: 'private' }, { value: 'public', title: 'public' }, { value: 'unlisted', title: 'unlisted' }]
+
     const [channelList, setChannelList] = useState([])
     const [gapiLoaded, setGapiLoaded] = useState(false)
+    const [openYtErrInfo, setOpenYtErrInfo] = useState(null);
     const [openYtInfo, setOpenYtInfo] = useState(false);
     const [progress, setProgress] = useState(0);
     const [pollVideoStatus, setPollVideoStatus] = useState(null);
@@ -55,8 +57,26 @@ export default function YouTubeForm(props) {
         image: ''
     };
 
+    const channelListResponse = (response) => {
+        if (response.error) {
+            setOpenYtErrInfo('Unable to fetch channel listing.')
+        } else {
+            setChannelList(response.items.map(item => ({ value: item.id, title: item.snippet.title })))
+        }
+    }
+
+    useEffect(() => {
+        const callChannelApi = () => {
+            window.gapi.auth.setToken({ access_token: GOOGLE_AUTH.access_token });
+            uploadVideo.ready(GOOGLE_AUTH.access_token, channelListResponse);
+        }
+        if (GOOGLE_AUTH && gapiLoaded) {
+            callChannelApi()
+        }
+        return () => { }
+    }, [GOOGLE_AUTH, gapiLoaded])
+
     const thumbnailsUploaded = (response) => {
-        console.log(response)
         setIsSubmitting(false)
         setProgress(0)
         dispatch({
@@ -98,8 +118,10 @@ export default function YouTubeForm(props) {
     }, [pollVideoStatus])
 
     const loadYoutubeApi = () => {
+        if (document.getElementById('gapi')) return
         const script = document.createElement('script')
         script.src = 'https://apis.google.com/js/client:plusone.js'
+        script.id = 'gapi'
         script.onload = () => {
             window.gapi.load('client', () => {
                 window.gapi.client.setApiKey(process.env.REACT_APP_GAPI_API_KEY);
@@ -114,16 +136,8 @@ export default function YouTubeForm(props) {
         return () => { };
     }, [])
 
-    const channelListResponse = (response) => {
-        if (response.items.length > 0) {
-            setChannelList(response.items.map(item => ({ value: item.id, title: item.snippet.title })))
-        }
-    }
-
     const signinCallback = async (result) => {
-        if (result.access_token) {
-            uploadVideo.ready(result.access_token, channelListResponse);
-        }
+        saveSocialAuthData('you_tube', result)
     };
 
     const videoUpdateComplete = (res) => {
@@ -199,7 +213,7 @@ export default function YouTubeForm(props) {
                                     mt: 0,
                                 }}
                                 htmlFor="title">Title</CustomFormLabel>
-                            <Field name="title" id="title" variant="outlined" fullWidth size="small" as={CustomTextField} placeholder="Title" />
+                            <Field name="title" id="yt_title" variant="outlined" fullWidth size="small" as={CustomTextField} placeholder="Title" />
                             <ErrorMessage name="title" component={CustomErrorMessage} />
                         </Grid>
                         <Grid item lg={4} md={6} sm={12} >
@@ -302,6 +316,29 @@ export default function YouTubeForm(props) {
                             <Box mt={2}>
                                 <LinearProgress variant="determinate" value={progress} />
                             </Box>
+                        </Grid>
+                        <Grid item md={12}>
+                            <Collapse in={!!openYtErrInfo}>
+                                <Alert
+                                    icon={false}
+                                    variant="filled"
+                                    severity="error"
+                                    action={
+                                        <IconButton
+                                            aria-label="close"
+                                            color="inherit"
+                                            size="small"
+                                            onClick={() => {
+                                                setOpenYtErrInfo(null);
+                                            }}
+                                        >
+                                            <FeatherIcon icon="x" width="20" />
+                                        </IconButton>
+                                    }
+                                >
+                                    <p>{openYtErrInfo}</p>
+                                </Alert>
+                            </Collapse>
                         </Grid>
                         <Grid item md={12}>
                             <Collapse in={openYtInfo}>

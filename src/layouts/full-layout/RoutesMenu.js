@@ -29,13 +29,13 @@ const RoutesMenu = [
         ],
       },
       {
-          "title": "Kunden",
+          "title": "Projekte",
           icon: 'users',
           children: [
             {
-              title: 'Alle Kunden',
+              title: 'Alle Projekte',
               icon: 'list',
-              href: '/customers',
+              href: '/projects',
             }    
           ]
       },

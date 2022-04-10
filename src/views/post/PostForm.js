@@ -13,7 +13,7 @@ import CustomTextField from '../../components/forms/custom-elements/CustomTextFi
 import CustomSelect from '../../components/forms/custom-elements/CustomSelect';
 import CustomFormLabel from '../../components/forms/custom-elements/CustomFormLabel';
 import CustomErrorMessage from '../../components/forms/custom-elements/CustomErrorMessage';
-import { ADD_SNACKBAR_MSG, SHOW_SNACKBAR_ERROR } from '../../redux/constants';
+import { ADD_SNACKBAR_MSG, SHOW_SNACKBAR_ERROR, UPDATE_SOCIAL_AUTH } from '../../redux/constants';
 import axiosInstance from '../../utils/axios';
 import { deleteRecord } from '../../utils/common';
 import SocialMediaForm from './SocialMediaForm';
@@ -40,7 +40,8 @@ const validations = Yup.object().shape({
 const PostForm = () => {
     const AUTH_USER = useSelector((state) => state.UserReducer.user);
     const dispatch = useDispatch();
-    const [customers, setCustomers] = React.useState([]) // used for selectbox
+    const [projects, setProjects] = React.useState([]) // used for selectbox
+    const [projectOptions, setProjectOptions] = React.useState([]) // used for selectbox
     const [moduleData, setModuleData] = React.useState() // post data
     const [mediaFiles, setMediaFiles] = React.useState([]) // mediaFiles uploaded file and used var to handle 
     const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -57,35 +58,40 @@ const PostForm = () => {
         preview: mediaFiles?.preview,
         fields: {
             "golditor-tags": moduleData?.acf['golditor-tags'] || '',
-            "golditor-customer": moduleData?.acf['golditor-customer'] || '',
+            "golditor-project": moduleData?.acf['golditor-project']?.ID || '',
             "youtube_data": moduleData?.acf.youtube_data || '',
         },
         status: 'private',
         author: AUTH_USER.id
     };
 
-    // useEffect(() => {
-    //     console.log(mediaFiles)
-    //     return () => { }
-    // }, [mediaFiles])
-
     useEffect(() => {
-        axiosInstance.get('/wp/v2/customer').then((result) => {
-            setCustomers(result.data.map((item) => ({ value: item.id, title: item.name })))
-        })
-        if (id) {
-            axiosInstance.get(`/wp/v2/golditor-campaigns/${id}`).then((result) => {
-                const postRes = result.data
-                Object.assign(postRes, {
-                    title: result.data.title.rendered.replace('Private: ', ''),
-                    content: result.data.content.rendered.replace(/<(.|\n)*?>/g, '')
+        axiosInstance.get('/wp/v2/golditor-projects').then((result) => {
+            const tempProjects = result.data
+            setProjects(result.data)
+            setProjectOptions(result.data.map((item) => ({ value: item.id, title: item.title.rendered })))
+            if (id) {
+                axiosInstance.get(`/wp/v2/golditor-campaigns/${id}`).then((response) => {
+                    const postRes = response.data
+                    Object.assign(postRes, {
+                        title: response.data.title.rendered.replace('Private: ', ''),
+                        content: response.data.content.rendered.replace(/<(.|\n)*?>/g, '')
+                    })
+                    setModuleData(response.data)
+                    const tmpModule = response.data
+                    if (tempProjects.length > 0 && tmpModule) {
+                        const projectData = tempProjects.filter((item) => item.id === +(tmpModule.acf['golditor-project']?.ID))
+                        dispatch({
+                            type: UPDATE_SOCIAL_AUTH,
+                            payload: projectData[0]?.social_auth_details ? JSON.parse(projectData[0]?.social_auth_details) : {}
+                        })
+                    }
                 })
-                setModuleData(result.data)
-            })
-            axiosInstance.get(`/wp/v2/media?parent=${id}`).then((result) => {
-                setMediaFiles(result.data)
-            })
-        }
+                axiosInstance.get(`/wp/v2/media?parent=${id}`).then((response) => {
+                    setMediaFiles(response.data)
+                })
+            }
+        })
     }, [id])
 
     useEffect(() => {
@@ -172,8 +178,8 @@ const PostForm = () => {
                                         <ErrorMessage name="title" component={CustomErrorMessage} />
                                     </Grid>
                                     <Grid item lg={6} md={12} sm={12}>
-                                        <CustomFormLabel htmlFor="golditor-customer">Customer: </CustomFormLabel>
-                                        <Field name="fields.golditor-customer" id="golditor-customer" variant="outlined" fullWidth size="small" menuitems={customers} as={CustomSelect} />
+                                        <CustomFormLabel htmlFor="golditor-project">Project: </CustomFormLabel>
+                                        <Field name="fields.golditor-project" id="golditor-project" variant="outlined" fullWidth size="small" menuitems={projectOptions} as={CustomSelect} />
                                     </Grid>
                                     <Grid item lg={6} md={12} sm={12}>
                                         <CustomFormLabel htmlFor="golditor-tags">Tags</CustomFormLabel>
@@ -223,7 +229,7 @@ const PostForm = () => {
                 )}
             </Formik >
 
-            {moduleData && <SocialMediaForm moduleData={moduleData} setModuleData={setModuleData} mediaFiles={mediaFiles} />}
+            {moduleData && <SocialMediaForm moduleData={moduleData} setModuleData={setModuleData} mediaFiles={mediaFiles} projects={projects} />}
         </>
     );
 };

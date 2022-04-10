@@ -11,7 +11,7 @@ import CustomErrorMessage from '../forms/custom-elements/CustomErrorMessage';
 import CustomFormLabel from '../forms/custom-elements/CustomFormLabel';
 import CustomSelect from '../forms/custom-elements/CustomSelect';
 import CustomTextField from '../forms/custom-elements/CustomTextField';
-import { ADD_SNACKBAR_MSG, FB_LOGIN, FB_LOGOUT, SHOW_SNACKBAR_ERROR } from '../../redux/constants';
+import { ADD_SNACKBAR_MSG, SHOW_SNACKBAR_ERROR } from '../../redux/constants';
 import CustomRadio from '../forms/custom-elements/CustomRadio';
 // import MediaUploader from './utils/MediaUploader';
 
@@ -32,10 +32,10 @@ const validations = Yup.object().shape({
     return schema.shape({});
 });
 
-export default function FaceBookForm({ moduleData, mediaFiles }) {
+export default function FaceBookForm({ moduleData, mediaFiles, saveSocialAuthData }) {
     const dispatch = useDispatch();
     const [isSubmitting, setIsSubmitting] = useState(null);
-    const FB_AUTH = useSelector((state) => state.FBAuthReducer.FB_AUTH);
+    const FB_AUTH = useSelector((state) => state.SocialAuthReducer.fb);
     const [pageList, setPageList] = useState([]);
     const [pageOptionList, setPageOptionList] = useState([]);
     const [fileFetcProcess, setFileFetcProcess] = useState(0);
@@ -50,45 +50,21 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
         video: ''
     };
 
-    const getFbPages = () => {
-        window.FB.api('/me/accounts', (response) => {
-            setPageList(response.data)
-            setPageOptionList(response.data.map(item => ({ value: item.id, title: item.name })))
-        });
-    }
-    useEffect(() => {
-        if (FB_AUTH) { getFbPages() }
-        return () => { }
-    }, [FB_AUTH])
-
-    const statusChangeCallback = (response) => {  // Called with the results from FB.getLoginStatus().
-        if (response.status === 'connected') {   // Logged into your webpage and Facebook.
-            dispatch({
-                type: FB_LOGIN,
-                payload: response.authResponse
-            })
-        } else {                                 // Not logged into your webpage or we are unable to tell.
-            dispatch({
-                type: FB_LOGOUT,
-            })
-        }
-    }
-
     const loadFBSdk = async () => {
+        if (document.getElementById('fb-api')) return
         const script = document.createElement('script')
         script.src = 'https://connect.facebook.net/en_US/sdk.js'
+        script.id = 'fb-api'
         script.onload = () => {
-            // console.log(window.FB)
             window.FB.init({
-                appId: '2741494312807498',
+                appId: process.env.REACT_APP_FB_APP_ID,
                 cookie: true,
                 xfbml: true,
                 version: 'v12.0'
             });
-
-            window.FB.getLoginStatus((response) => {
-                statusChangeCallback(response)
-            });
+            // window.FB.getLoginStatus((response) => {
+            //     statusChangeCallback(response)
+            // });
         }
         document.body.appendChild(script)
     }
@@ -98,12 +74,31 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
         return () => { };
     }, [])
 
+    const getFbPages = () => {
+        const url = `${process.env.REACT_APP_FB_API_URL}/me/accounts?access_token=${FB_AUTH.accessToken}`
+        fetch(url)
+            .then(response => response.json())
+            .then(response => {
+                if (!response.error) {
+                    setPageList(response.data)
+                    setPageOptionList(response.data.map(item => ({ value: item.id, title: item.name })))
+                }
+            })
+    }
+
+    useEffect(() => {
+        if (FB_AUTH) { getFbPages(); }
+        return () => { }
+    }, [FB_AUTH])
+
     const login = () => {
         window.FB.login((response) => {
             if (response.authResponse) {
-                console.log(response)
-                console.log('Welcome! ');
-                statusChangeCallback(response)
+                if (response.status === 'connected') {   // Logged into your webpage and Facebook.
+                    saveSocialAuthData('fb', response.authResponse)
+                } else {                                 // Not logged into your webpage or we are unable to tell.
+                    saveSocialAuthData('fb', null)
+                }
             } else {
                 console.log('User cancelled login or did not fully authorize.');
             }
@@ -111,11 +106,9 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
     }
 
     const logout = () => {
+        saveSocialAuthData('fb', null)
         window.FB.logout((response) => {
             console.log('FB-logout', response)
-            dispatch({
-                type: FB_LOGOUT,
-            })
         });
     }
 
@@ -130,7 +123,6 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
             .then(response => response.json())
             .then(data => {
                 setIsSubmitting(false)
-                console.log(data)
                 dispatch({
                     type: ADD_SNACKBAR_MSG,
                     payload: `Post has been added successfully.`
@@ -150,7 +142,6 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
             .then(response => response.json())
             .then(data => {
                 setIsSubmitting(false)
-                console.log(data)
                 dispatch({
                     type: ADD_SNACKBAR_MSG,
                     payload: `Post has been added successfully.`
@@ -200,7 +191,6 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
         })
             .then(response => response.json())
             .then(data => {
-                console.log('initVideoUpload', data)
                 uploadChunk(data)
             })
             .catch((error) => {
@@ -214,11 +204,9 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
         axios.post(url, {}, {
             headers: { "Content-Type": "multipart/form-data" },
             onUploadProgress: data => {
-                console.log(data)
                 // Set the progress value to show the progress bar
             },
         }).then((response) => {
-            console.log(response)
             setIsSubmitting(false)
             dispatch({
                 type: ADD_SNACKBAR_MSG,
@@ -250,7 +238,6 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
             },
         }).then((blob) => {
             const file = new File([blob.data], `${mediaFiles.video.slug}.${mediaFiles.video.media_details.fileformat}`, { type: mediaFiles.video.mime_type });
-            console.log(file);
             setUploadVideoFile(file);
             initVideoUpload(file)
             // uploadVideo.uploadFile(file, values, setProgress, setPollVideoStatus);
@@ -258,9 +245,7 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
     }
 
     const handleSubmit = (values) => {
-        console.log(values)
         setIsSubmitting(true)
-        console.log(selectedPage);
         let url = `${process.env.REACT_APP_FB_API_URL}/${selectedPage.id}`
         if (values.postType === 'MSG') {
             url += `/feed?message=${encodeURIComponent(values.message)}&access_token=${selectedPage.access_token}`
@@ -269,7 +254,6 @@ export default function FaceBookForm({ moduleData, mediaFiles }) {
             url += `/photos?url=${mediaFiles.filter(item => item.id === values.image)[0].source_url}&message=${encodeURIComponent(values.message)}&access_token=${selectedPage.access_token}`
             addPost(url)
         } else if (values.postType === 'VIDEO') {
-            console.log('calling start')
             // if (mediaFiles.video.media_details.filesize > 104857600)
             //     fetchVideo()
             // else

@@ -1,27 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
     Button
 } from '@material-ui/core';
-import { useDispatch } from 'react-redux';
-import { GOOGLE_LOGIN, GOOGLE_LOGOUT } from '../../redux/constants';
+import { useSelector } from 'react-redux';
 
 const GoogleLogin = (props) => {
     const { signinCallback } = props
-    const [user, setUser] = useState(null);
-    const dispatch = useDispatch();
+    const GOOGLE_AUTH = useSelector((state) => state.SocialAuthReducer.you_tube);
+
     const windowGapi = window.gapi;
 
     const updateUser = (currentUser) => {
         const ytUser = {
             name: currentUser.getBasicProfile().getName(),
             profileImg: currentUser.getBasicProfile().getImageUrl(),
+            email: currentUser.getBasicProfile().getEmail(),
         }
-        dispatch({
-            type: GOOGLE_LOGIN,
-            payload: currentUser
-        })
-        setUser(ytUser);
-        signinCallback(currentUser.getAuthResponse())
+        signinCallback({ ...ytUser, ...currentUser.getAuthResponse() })
     };
 
     const attachSignin = (element, auth2) => {
@@ -38,35 +33,33 @@ const GoogleLogin = (props) => {
             client_id: process.env.REACT_APP_GAPI_CLIENT_ID,
             scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube'
         }).then((auth2) => {
-            if (auth2.isSignedIn.get()) {
-                updateUser(auth2.currentUser.get())
-            } else {
-                attachSignin(document.getElementById('ytLoginBtn'), auth2);
-            }
+            // if (!auth2.isSignedIn.get()) 
+            attachSignin(document.getElementById('ytLoginBtn'), auth2);
         })
     }
 
     useEffect(() => {
-        setAuth2();
+        if (!GOOGLE_AUTH) setAuth2();
+        else windowGapi.auth.setToken({ access_token: GOOGLE_AUTH.access_token });
+
         return () => { };
-    }, []);
+    }, [GOOGLE_AUTH]);
 
     const signOut = () => {
-        const auth2 = windowGapi.auth2.getAuthInstance();
-        auth2.signOut().then(() => {
-            setUser(null);
-            setAuth2();
-            dispatch({
-                type: GOOGLE_LOGOUT
-            })
-            console.log('User signed out.');
-        });
+        // const auth2 = windowGapi.auth2.getAuthInstance();
+        signinCallback(null)
+        // if (auth2) {
+        // auth2.signOut().then(() => {
+        //     signinCallback(null)
+        //     console.log('User signed out.');
+        // });
+        // }
     }
 
-    if (user) {
+    if (GOOGLE_AUTH) {
         return (
             <div className="container">
-                <Button variant="contained" onClick={signOut} id="" color="primary" type="button"
+                <Button variant="contained" onClick={() => signOut()} id="" color="primary" type="button"
                     sx={{
                         mr: 1,
                     }}>

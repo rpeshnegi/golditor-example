@@ -67,11 +67,9 @@ const UploadMediaItem = ({ media, moduleData, setMediaFiles, setToUploadFiles })
                 headers: { "Content-Type": "multipart/form-data" },
                 onUploadProgress: data => {
                     // Set the progress value to show the progress bar
-                    // console.log(data);
                     setProgress(Math.round((100 * data.loaded) / data.total))
                 },
             }).then((response) => {
-                // console.log(response)
                 setMediaFiles((state) => [...state, ...[response.data]])
 
                 // removing uploaded file

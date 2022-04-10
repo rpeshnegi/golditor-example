@@ -1,11 +1,10 @@
-/* eslint-disable no-unused-vars */
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     Grid, Button, Stack, Box, FormControl, RadioGroup, FormControlLabel, CircularProgress
 } from '@material-ui/core';
 import * as Yup from 'yup';
 import { Formik, Form, ErrorMessage, Field } from 'formik';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import CustomErrorMessage from '../forms/custom-elements/CustomErrorMessage';
 import CustomFormLabel from '../forms/custom-elements/CustomFormLabel';
 import CustomTextField from '../forms/custom-elements/CustomTextField';
@@ -26,12 +25,11 @@ const validations = Yup.object().shape({
 });
 
 export default function TwitterForm({ moduleData, mediaFiles }) {
-    const TWITTER_AUTH = JSON.parse(localStorage.getItem('TWITTER_AUTH'))
+    // const TWITTER_AUTH = JSON.parse(localStorage.getItem('TWITTER_AUTH'))
+    const TWITTER_AUTH = useSelector((state) => state.SocialAuthReducer.twitter);
     const dispatch = useDispatch();
     const [isSubmitting, setIsSubmitting] = useState(null);
     const [mediaToShare, setMediaToShare] = useState(null);
-
-    // console.log(mediaFiles)
 
     const initialValues = {
         message: `${moduleData.title}\n${moduleData.content}${moduleData.acf['golditor-tags']}`,
@@ -39,14 +37,14 @@ export default function TwitterForm({ moduleData, mediaFiles }) {
         media: ''
     };
 
-    useEffect(() => {
-        return () => { };
-    }, [])
+    // useEffect(() => {
+    //     return () => { };
+    // }, [])
 
     const makeTweet = (values, mediaIds = null) => {
         // eslint-disable-next-line no-param-reassign
         values.media_ids = mediaIds
-        axiosInstance.post(`/custom_api/twitter/tweets?oauth_token=${TWITTER_AUTH.oauth_token}&oauth_token_secret=${TWITTER_AUTH.oauth_token_secret}`, values).then((result) => {
+        axiosInstance.post(`/custom_api/twitter/tweets?oauth_token=${TWITTER_AUTH.oauth_token}&oauth_token_secret=${TWITTER_AUTH.oauth_token_secret}`, values).then(() => {
             setIsSubmitting(false)
             dispatch({
                 type: ADD_SNACKBAR_MSG,
@@ -106,9 +104,8 @@ export default function TwitterForm({ moduleData, mediaFiles }) {
 
     const getRequestToken = () => {
         localStorage.setItem('FALLBACK_URL', window.location.pathname + window.location.hash)
-        const callBackUrl = encodeURIComponent(`${window.location.origin}/auth/social-media`)
+        const callBackUrl = encodeURIComponent(`${window.location.origin}/auth/social-media?project_id=${moduleData.acf['golditor-project'].ID}`)
         axiosInstance.get(`/custom_api/twitter/request_token?oauth_callback=${callBackUrl}`).then((result) => {
-            console.log(result)
             window.location.href = result.data.data.oauth_url
         })
     }
@@ -149,7 +146,7 @@ export default function TwitterForm({ moduleData, mediaFiles }) {
                                 mt: 0,
                             }} htmlFor="content">Content</CustomFormLabel>
                             <Field multiline
-                                rows={4} name="message" id="message" variant="outlined" fullWidth size="small" as={CustomTextField} placeholder="Description" />
+                                rows={4} name="message" id="tweet-message" variant="outlined" fullWidth size="small" as={CustomTextField} placeholder="Description" />
                             <ErrorMessage name="message" component={CustomErrorMessage} />
                         </Grid>
                         <Grid item lg={4} md={12} sm={12}>

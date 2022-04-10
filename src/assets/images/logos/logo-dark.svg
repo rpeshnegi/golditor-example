@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="114.495" height="31.873" viewBox="0 0 114.495 31.873">
+  <g id="logo-white" transform="translate(-2.333 -2.5)">
+    <path id="Rounded_Rectangle_698" data-name="Rounded Rectangle 698" d="M8.723,4.086a5.9,5.9,0,0,1,5.9,5.9v18.23a5.9,5.9,0,0,1-11.79,0V9.981a5.9,5.9,0,0,1,5.9-5.895Z" fill="#fb9678" stroke="#fb9678" stroke-width="1" fill-rule="evenodd"/>
+    <rect id="Rounded_Rectangle_699" data-name="Rounded Rectangle 699" width="25" height="12" rx="6" transform="translate(3 3)" fill="#03c9d7" stroke="#03c9d7" stroke-width="1"/>
+    <circle id="Ellipse_1" data-name="Ellipse 1" cx="6.328" cy="6.328" r="6.328" transform="translate(15.375 17.641)" fill="#fec90f" stroke="#fec90f" stroke-width="1"/>
+    <text id="Golditor" transform="translate(39.828 25)" font-size="20" font-family="HelveticaNeue-Bold, Helvetica Neue" font-weight="700"><tspan x="0" y="0">Golditor</tspan></text>
+  </g>
+</svg>

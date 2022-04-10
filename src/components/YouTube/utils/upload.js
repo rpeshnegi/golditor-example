@@ -80,11 +80,7 @@ UploadVideo.prototype.ready = async function (accessToken, cb) {
             mine: true
         },
         callback: function (response) {
-            if (response.error) {
-                console.log(response.error.message);
-            } else {
-                cb(response);
-            }
+            cb(response);
             // eslint-disable-next-line no-extra-bind
         }.bind(this)
     });
@@ -98,7 +94,6 @@ UploadVideo.prototype.ready = async function (accessToken, cb) {
  * @param {object} file File object corresponding to the video to upload.
  */
 UploadVideo.prototype.uploadFile = function (file, values, setProgress, setPollVideoStatus) {
-    console.log('accessToken', this.accessToken)
     this.setPollVideoStatus = setPollVideoStatus
     const metadata = {
         snippet: {
@@ -229,7 +224,6 @@ UploadVideo.prototype.setThumbnails = function (youtubeData, file, cb) {
     };;
     xhr.send(file);
 
-    console.log('accessToken', this.accessToken)
     // const metadata = {
     //     videoId: youtubeData.id
     // };

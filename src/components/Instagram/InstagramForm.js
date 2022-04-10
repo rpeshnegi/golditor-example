@@ -1,6 +1,7 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from 'react';
 import {
-    Grid, Button, Stack, Box, CircularProgress, FormControl, RadioGroup, FormControlLabel
+    Grid, Button, Stack, Box, CircularProgress, FormControl, RadioGroup, FormControlLabel, Checkbox, Avatar, IconButton
 } from '@material-ui/core';
 import * as Yup from 'yup';
 import { Formik, Form, ErrorMessage, Field } from 'formik';
@@ -9,102 +10,94 @@ import CustomErrorMessage from '../forms/custom-elements/CustomErrorMessage';
 import CustomFormLabel from '../forms/custom-elements/CustomFormLabel';
 import CustomSelect from '../forms/custom-elements/CustomSelect';
 import CustomTextField from '../forms/custom-elements/CustomTextField';
-import { ADD_SNACKBAR_MSG, FB_LOGIN, FB_LOGOUT, SHOW_SNACKBAR_ERROR } from '../../redux/constants';
-import CustomRadio from '../forms/custom-elements/CustomRadio';
+import { ADD_SNACKBAR_MSG, SHOW_SNACKBAR_ERROR } from '../../redux/constants';
+import CustomCheckbox from '../forms/custom-elements/CustomCheckbox';
 
 const validations = Yup.object().shape({
     fbPageId: Yup.string().required('Required')
 }).when((values, schema) => {
-    if (values.postType === 'PHOTO') {
-        return schema.shape({
-            image: Yup.number().required('Required'),
-        });
-    }
-    if (values.postType === 'VIDEO') {
-        return schema.shape({
-            video: Yup.number().required('Required'),
-        });
-    }
-    return schema.shape({});
+    // if (values.postType === 'PHOTO') {
+    //     return schema.shape({
+    //         image: Yup.number().required('Required'),
+    //     });
+    // }
+    // if (values.postType === 'VIDEO') {
+    //     return schema.shape({
+    //         video: Yup.number().required('Required'),
+    //     });
+    // }
+    // return schema.shape({});
 });
 
-export default function InstagramForm({ moduleData, mediaFiles }) {
+export default function InstagramForm({ moduleData, mediaFiles, saveSocialAuthData }) {
     const dispatch = useDispatch();
-    const FB_AUTH = useSelector((state) => state.FBAuthReducer.FB_AUTH);
+    const FB_AUTH = useSelector((state) => state.SocialAuthReducer.fb);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [mediaToShare, setMediaToShare] = useState(null);
+    const [mediaToShare, setMediaToShare] = useState([]);
     const [pageList, setPageList] = useState([]);
     const [pageOptionList, setPageOptionList] = useState([]);
     const [instaUser, setInstaUser] = useState(null);
+    const [formData, setFormData] = useState(null);
+    const [mediaUploaded, setMediaUploaded] = useState([]);
+    const [mediaUploadError, setMediaUploadError] = useState([]);
 
     const initialValues = {
         fbPageId: '',
-        caption: `${moduleData.title}`,
-        postType: 'PHOTO',
-        image: '',
-        video: ''
+        caption: `${moduleData.title}\n${moduleData.content}${moduleData.acf['golditor-tags']}`,
+        selectedMedia: [],
     };
 
     const getFbPages = () => {
-        window.FB.api('/me/accounts', (response) => {
-            setPageList(response.data)
-            setPageOptionList(response.data.map(item => ({ value: item.id, title: item.name })))
-        });
+        const url = `${process.env.REACT_APP_FB_API_URL}/me/accounts?access_token=${FB_AUTH.accessToken}`
+        fetch(url)
+            .then(response => response.json())
+            .then(response => {
+                if (!response.error) {
+                    setPageList(response.data)
+                    setPageOptionList(response.data.map(item => ({ value: item.id, title: item.name })))
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
     }
     useEffect(() => {
         if (FB_AUTH) { getFbPages() }
         return () => { }
     }, [FB_AUTH])
 
-    // useEffect(() => {
-    //     console.log(mediaToShare)
-    //     return () => { }
-    // }, [mediaToShare])
-
-    const statusChangeCallback = (response) => {  // Called with the results from FB.getLoginStatus().
-        if (response.status === 'connected') {   // Logged into your webpage and Facebook.
-            dispatch({
-                type: FB_LOGIN,
-                payload: response.authResponse
-            })
-        } else {                                 // Not logged into your webpage or we are unable to tell.
-            dispatch({
-                type: FB_LOGOUT,
-            })
+    const loadFBSdk = async () => {
+        if (document.getElementById('fb-api')) return
+        const script = document.createElement('script')
+        script.src = 'https://connect.facebook.net/en_US/sdk.js'
+        script.id = 'fb-api'
+        script.onload = () => {
+            window.FB.init({
+                appId: process.env.REACT_APP_FB_APP_ID,
+                cookie: true,
+                xfbml: true,
+                version: 'v12.0'
+            });
+            // window.FB.getLoginStatus((response) => {
+            //     statusChangeCallback(response)
+            // });
         }
+        document.body.appendChild(script)
     }
 
-    // commented in this component because FB JS  loaded in another component 
-    // const loadFBSdk = async () => {
-    //     const script = document.createElement('script')
-    //     script.src = 'https://connect.facebook.net/en_US/sdk.js'
-    //     script.onload = () => {
-    //         // console.log(window.FB)
-    //         window.FB.init({
-    //             appId: '2741494312807498',
-    //             cookie: true,
-    //             xfbml: true,
-    //             version: 'v12.0'
-    //         });
-
-    //         window.FB.getLoginStatus((response) => {
-    //             statusChangeCallback(response)
-    //         });
-    //     }
-    //     document.body.appendChild(script)
-    // }
-
-    // useEffect(() => {
-    //     loadFBSdk()
-    //     return () => { };
-    // }, [])
+    useEffect(() => {
+        loadFBSdk()
+        return () => { };
+    }, [])
 
     const login = () => {
         window.FB.login((response) => {
             if (response.authResponse) {
-                console.log(response)
-                console.log('Welcome! ');
-                statusChangeCallback(response)
+                if (response.status === 'connected') {   // Logged into your webpage and Facebook.
+                    saveSocialAuthData('fb', response.authResponse)
+                } else {                                 // Not logged into your webpage or we are unable to tell.
+                    saveSocialAuthData('fb', null)
+                }
             } else {
                 console.log('User cancelled login or did not fully authorize.');
             }
@@ -112,11 +105,9 @@ export default function InstagramForm({ moduleData, mediaFiles }) {
     }
 
     const logout = () => {
+        saveSocialAuthData('fb', null) // used FB user 
         window.FB.logout((response) => {
             console.log('FB-logout', response)
-            dispatch({
-                type: FB_LOGOUT,
-            })
         });
     }
 
@@ -127,7 +118,7 @@ export default function InstagramForm({ moduleData, mediaFiles }) {
             .then(response => response.json())
             .then(publishRes => {
                 setIsSubmitting(false)
-                console.log(publishRes)
+                setFormData(null)
                 if (publishRes.error) {
                     dispatch({
                         type: SHOW_SNACKBAR_ERROR,
@@ -146,22 +137,20 @@ export default function InstagramForm({ moduleData, mediaFiles }) {
             });
     }
 
-    const getVideoStatus = (mediaRes) => {
+    const getCarousalStatus = (mediaRes) => {
         fetch(`${process.env.REACT_APP_FB_API_URL}/${mediaRes.id}?fields=status_code&access_token=${FB_AUTH.accessToken}`)
             .then(response => response.json())
             .then(statusRes => {
-                console.log(statusRes)
                 if (statusRes.status_code === 'FINISHED') {
                     publishPost(mediaRes)
                 } else if (statusRes.status_code === 'ERROR') {
-                    setIsSubmitting(false)
                     dispatch({
                         type: SHOW_SNACKBAR_ERROR,
                         payload: 'Some error has been occured! Please read all requirements.'
                     })
                 } else {
                     setTimeout(() => {
-                        getVideoStatus(mediaRes)
+                        getCarousalStatus(mediaRes)
                     }, 20000)
                 }
             })
@@ -170,14 +159,39 @@ export default function InstagramForm({ moduleData, mediaFiles }) {
             });
     }
 
-    const uploadVideoMedia = (values) => {
-        fetch(`${process.env.REACT_APP_FB_API_URL}/${instaUser}/media?media_type=VIDEO&video_url=${mediaToShare.source_url}&caption=${values.caption}&access_token=${FB_AUTH.accessToken}`, {
-            method: 'POST'
-        })
+    const getVideoStatus = (mediaRes, carousel) => {
+        fetch(`${process.env.REACT_APP_FB_API_URL}/${mediaRes.id}?fields=status_code&access_token=${FB_AUTH.accessToken}`)
+            .then(response => response.json())
+            .then(statusRes => {
+                if (statusRes.status_code === 'FINISHED') {
+                    if (carousel) setMediaUploaded((state) => ([...state, ...[mediaRes]]))
+                    else publishPost(mediaRes)
+                } else if (statusRes.status_code === 'ERROR') {
+                    if (carousel) setMediaUploadError((state) => ([...state, ...[statusRes]]))
+                    else {
+                        dispatch({
+                            type: SHOW_SNACKBAR_ERROR,
+                            payload: 'Some error has been occured! Please read all requirements.'
+                        })
+                    }
+                } else {
+                    setTimeout(() => {
+                        getVideoStatus(mediaRes, carousel)
+                    }, 20000)
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+    }
+
+    const uploadVideoMedia = (values, media, carousel = false) => {
+        let url = `${process.env.REACT_APP_FB_API_URL}/${instaUser}/media?media_type=VIDEO&video_url=${media.source_url}&access_token=${FB_AUTH.accessToken}`
+        url += carousel ? `&is_carousel_item=true` : `&caption=${values.caption}`
+        fetch(url, { method: 'POST' })
             .then(response => response.json())
             .then(mediaRes => {
-                console.log(mediaRes)
-                if (!mediaRes.error) getVideoStatus(mediaRes)
+                if (!mediaRes.error) getVideoStatus(mediaRes, carousel)
             })
             .catch((error) => {
                 console.error('Error:', error);
@@ -186,43 +200,98 @@ export default function InstagramForm({ moduleData, mediaFiles }) {
 
     const getIGAccount = (event) => {
         const selectedPage = pageList.filter((page) => page.id === event.target.value)[0]
-        // console.log(selectedPage);
         window.FB.api(
             `/${selectedPage.id}?fields=instagram_business_account&access_token=${selectedPage.access_token}`,
             (response) => {
                 if (response && !response.error) {
-                    console.log(response)
                     setInstaUser(response.instagram_business_account.id)
                 }
             }
         );
     }
 
-    const handleSubmit = (values) => {
-        setIsSubmitting(true)
-        if (values.postType === 'PHOTO') {
-            fetch(`${process.env.REACT_APP_FB_API_URL}/${instaUser}/media?image_url=${mediaToShare.source_url}&caption=${values.caption}&access_token=${FB_AUTH.accessToken}`, {
-                method: 'POST'
+    const makeCarouselPost = () => {
+        const containerID = mediaUploaded.map((media) => media.id)
+        fetch(`${process.env.REACT_APP_FB_API_URL}/${instaUser}/media?media_type=CAROUSEL&caption=${formData.caption}&access_token=${FB_AUTH.accessToken}&children=${containerID}`, {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(mediaRes => {
+                if (!mediaRes.error) getCarousalStatus(mediaRes)
+                else {
+                    dispatch({
+                        type: SHOW_SNACKBAR_ERROR,
+                        payload: { msg: mediaRes.error.message, error: true }
+                    })
+                }
             })
-                .then(response => response.json())
-                .then(mediaRes => {
-                    console.log(mediaRes)
-                    if (!mediaRes.error) publishPost(mediaRes)
-                    else {
-                        setIsSubmitting(false)
-                        dispatch({
-                            type: SHOW_SNACKBAR_ERROR,
-                            payload: { msg: mediaRes.error.message, error: true }
-                        })
-                    }
-                })
-                .catch((error) => {
-                    setIsSubmitting(false)
-                    console.error('Error:', error);
-                });
-        } else {
-            uploadVideoMedia(values)
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+    }
+
+    useEffect(() => {
+        if (mediaUploadError > 0) {
+            dispatch({
+                type: SHOW_SNACKBAR_ERROR,
+                payload: 'Some error has been occured on media upload.'
+            })
         }
+    }, [mediaUploadError])
+
+    useEffect(() => {
+        if (mediaUploaded.length > 0 && mediaUploaded.length === mediaToShare.length) {
+            makeCarouselPost(mediaUploaded)
+        }
+    }, [mediaUploaded])
+
+    const uploadImageMedia = (values, media, carousel = false) => {
+        let url = `${process.env.REACT_APP_FB_API_URL}/${instaUser}/media?image_url=${media.source_url}&access_token=${FB_AUTH.accessToken}`
+        url += carousel ? `&is_carousel_item=true` : `&caption=${values.caption}`
+        fetch(url, { method: 'POST' })
+            .then(response => response.json())
+            .then(mediaRes => {
+                if (!mediaRes.error) {
+                    if (carousel) setMediaUploaded((state) => ([...state, ...[mediaRes]]))
+                    else publishPost(mediaRes)
+                } else if (carousel)
+                    setMediaUploadError((state) => ([...state, ...[mediaRes.error]]))
+                else if (!carousel) {
+                    dispatch({
+                        type: SHOW_SNACKBAR_ERROR,
+                        payload: { msg: mediaRes.error.message, error: true }
+                    })
+                }
+            })
+            .catch((error) => {
+                setIsSubmitting(false)
+                console.error('Error:', error);
+            });
+    }
+
+    const handleSubmit = (values) => {
+        setMediaUploaded([])
+        setIsSubmitting(true)
+        setFormData(values)
+        if (mediaToShare.length === 1) {
+            if (mediaToShare[0].mime_type.includes('video')) uploadVideoMedia(values, mediaToShare[0])
+            else uploadImageMedia(values, mediaToShare[0])
+        } else {
+            mediaToShare.forEach((media) => {
+                if (media.mime_type.includes('image')) {
+                    uploadImageMedia(values, media, true)
+                } else {
+                    uploadVideoMedia(values, media, true)
+                }
+            })
+        }
+    }
+
+    const handleMediaSelect = (media, event) => {
+        if (event.target.checked)
+            setMediaToShare((state) => ([...state, ...[media]]))
+        else
+            setMediaToShare((state) => state.filter(item => item.id !== media.id))
     }
 
     return (
@@ -257,7 +326,7 @@ export default function InstagramForm({ moduleData, mediaFiles }) {
                             <CustomFormLabel sx={{
                                 mt: 0,
                             }} htmlFor="caption">caption</CustomFormLabel>
-                            <Field rows={4} name="caption" id="caption" variant="outlined" fullWidth size="small" as={CustomTextField} placeholder="Caption" />
+                            <Field multiline rows={4} name="caption" id="caption" variant="outlined" fullWidth size="small" as={CustomTextField} placeholder="Caption" />
                             <ErrorMessage name="caption" component={CustomErrorMessage} />
                         </Grid>
                         <Grid item lg={2} md={6} sm={12}>
@@ -278,93 +347,57 @@ export default function InstagramForm({ moduleData, mediaFiles }) {
                                 </Button>
                             }
                         </Grid>
-                        <Grid item lg={3} md={6} sm={12}>
+                        <Grid item lg={6} md={6} sm={12}>
                             <FormControl component="fieldset">
-                                <RadioGroup
-                                    aria-label="postType"
-                                    name="postType"
-                                    value={values.postType}
-                                    onChange={(event) => {
-                                        handleChange(event)
-                                        setMediaToShare(null)
-                                        setFieldValue('image', '')
-                                        setFieldValue('video', '')
-                                    }}
-                                >
-                                    <FormControlLabel
-                                        value="PHOTO"
-                                        control={<CustomRadio />}
-                                        label="Photo with Content"
-                                    />
-                                    <FormControlLabel
-                                        value="VIDEO"
-                                        control={<CustomRadio />}
-                                        label="Video with Content"
-                                    />
-                                </RadioGroup>
+                                {mediaFiles
+                                    .filter(media => media.mime_type.includes('video') || media.mime_type.includes('image'))
+                                    .map(item => (
+                                        <FormControlLabel key={item.id}
+                                            control={
+                                                <Field onClick={(event) => {
+                                                    handleChange(event)
+                                                    handleMediaSelect(item, event)
+                                                }} checked={values.selectedMedia.includes(item.id.toString())} type="checkbox" value={item.id} name="selectedMedia" id="selectedMedia" variant="outlined" as={CustomCheckbox} />
+                                            }
+                                            label={item.slug}
+                                        />
+                                    ))}
                             </FormControl>
                         </Grid>
-                        {values.postType === 'PHOTO' &&
-                            <Grid item lg={3} md={6} sm={6} xs={12}>
-                                <CustomFormLabel sx={{
-                                    mt: 0,
-                                }}
-                                    htmlFor="fname-text">Image:</CustomFormLabel>
-                                <Field name="image" id="image" variant="outlined" fullWidth size="small"
-                                    onChange={(event) => {
-                                        handleChange(event)
-                                        setMediaToShare(mediaFiles.filter((item) => item.id === event.target.value)[0])
-                                    }}
-                                    menuitems={mediaFiles
-                                        .filter((item) => item.mime_type.includes('image'))
-                                        .map(item => ({ value: item.id, title: item.slug })
-                                        )}
-                                    as={CustomSelect}
-                                />
-                                <ErrorMessage name="image" component={CustomErrorMessage} />
-                            </Grid>
-                        }
-                        {values.postType === 'VIDEO' &&
-                            <Grid item lg={3} md={6} sm={6}>
-                                <CustomFormLabel sx={{
-                                    mt: 0,
-                                }}
-                                    htmlFor="fname-text">Video:</CustomFormLabel>
-                                <Field name="video" id="video" variant="outlined" fullWidth size="small"
-                                    onChange={(event) => {
-                                        handleChange(event)
-                                        setMediaToShare(null)
-                                        setTimeout(()=>{
-                                            setMediaToShare(mediaFiles.filter((item) => item.id === event.target.value)[0])
-                                        },50)
-                                    }}
-                                    menuitems={mediaFiles
-                                        .filter((item) => item.mime_type.includes('video'))
-                                        .map(item => ({ value: item.id, title: item.slug })
-                                        )}
-                                    as={CustomSelect}
-                                />
-                                <ErrorMessage name="video" component={CustomErrorMessage} />
-                            </Grid>
-                        }
                         <Grid item lg={4} md={6} sm={12}>
                             <CustomFormLabel sx={{
                                 mt: 0,
                             }}
                                 htmlFor="fname-text">Preview:</CustomFormLabel>
-                            {mediaToShare && mediaToShare.mime_type.includes('video') ?
-                                <video width="250" height="150" controls>
-                                    <source src={mediaToShare.source_url} type={mediaToShare.mime_type} />
-                                    <track kind="captions" />
-                                    Your browser does not support the video tag.
-                                </video>
-                                :
-                                <img style={{ width: '100%', maxWidth: 180 }} alt={mediaToShare?.title.raw} src={mediaToShare?.source_url} />
-                            }
+                            <Grid container spacing={3} sx={{
+                                ml: 0,
+                            }}>
+                                {mediaToShare.map((media) => (
+                                    <Grid key={media.id} item lg={6} md={6} sm={12}>
+                                        {media && media.mime_type.includes('video') ?
+                                            <video width="140" height="100" controls>
+                                                <source src={media.source_url} type={media.mime_type} />
+                                                <track kind="captions" />
+                                                Your browser does not support the video tag.
+                                            </video>
+                                            :
+                                            <Avatar
+                                                src={media.source_url}
+                                                alt={media.source_url}
+                                                sx={{
+                                                    borderRadius: '10px',
+                                                    height: '100px',
+                                                    width: '140px',
+                                                }}
+                                            />
+                                        }
+                                    </Grid>
+                                ))}
+                            </Grid>
                         </Grid>
                         <Grid item lg={2} md={4} sm={6}>
                             <Stack spacing={1} direction={{ xs: 'column', sm: 'column' }}>
-                                {(FB_AUTH && values.postType === 'PHOTO') &&
+                                {(FB_AUTH && mediaToShare.length > 0) &&
                                     <Button variant="contained" color="primary" type="submit"
                                         disabled={isSubmitting}
                                         sx={{
@@ -373,27 +406,19 @@ export default function InstagramForm({ moduleData, mediaFiles }) {
                                         Share
                                     </Button>
                                 }
-                                {(FB_AUTH && values.postType === 'VIDEO') &&
-                                    <>
-                                        <Button variant="contained" color="primary" type="submit"
-                                            disabled={isSubmitting}
-                                            sx={{
-                                                mr: 1,
-                                            }}>
-                                            Share
-                                        </Button>
-                                        {isSubmitting && <CircularProgress />}
-                                        <a href="https://developers.facebook.com/docs/instagram-api/reference/ig-user/media" target="_blank" rel="noreferrer" >
-                                            IG video requirements
-                                        </a>
-                                    </>
+                                {isSubmitting && <IconButton
+                                    aria-label="close"
+                                    color="inherit"
+                                    size="small"
+                                >
+                                    <CircularProgress />
+                                </IconButton>
                                 }
                             </Stack>
                         </Grid>
                     </Grid>
                 </Form>
-            )
-            }
+            )}
         </Formik >
     );
 }

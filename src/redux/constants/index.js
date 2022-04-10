@@ -24,10 +24,6 @@ export const HIDE_SNACKBAR = 'HIDE_SNACKBAR';
 export const ADD_SNACKBAR_MSG = 'ADD_SNACKBAR_MSG';
 export const SHOW_SNACKBAR_ERROR = 'SHOW_SNACKBAR_ERROR';
 
-// you tube authentication 
-export const GOOGLE_LOGIN = 'YT_LOGIN';
-export const GOOGLE_LOGOUT = 'GOOGLE_LOGOUT';
-
-// FB authentication
-export const FB_LOGIN = 'FB_LOGIN';
-export const FB_LOGOUT = 'FB_LOGOUT';
+// project social auth CONSTANTS
+export const UPDATE_SOCIAL_AUTH = 'UPDATE_SOCIAL_AUTH';
+export const REMOVE_SOCIAL_AUTH = 'REMOVE_SOCIAL_AUTH';

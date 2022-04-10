@@ -20,7 +20,10 @@ const ResetPassword = lazy(() => import('../views/authentication/ResetPassword')
 const Post = lazy(() => import('../views/post/Post'));
 const PostAdd = lazy(() => import('../views/post/PostAdd'));
 const PostEdit = lazy(() => import('../views/post/PostEdit'));
-const Customer = lazy(() => import('../views/customer/Customer'));
+const Project = lazy(() => import('../views/project/Project'));
+const ProjectAdd = lazy(() => import('../views/project/ProjectAdd'));
+const ProjectEdit = lazy(() => import('../views/project/ProjectEdit'));
+
 const SocialMedia = lazy(() => import('../views/authentication/SocialMedia'));
 
 const Router = (isAuthenticated) => [
@@ -38,6 +41,15 @@ const Router = (isAuthenticated) => [
             { path: '/posts', element: <Post /> },
             { path: '/posts/add', element: <PostAdd /> },
             { path: '/posts/edit/:id', element: <PostEdit /> },
+        ],
+    },
+    {
+        path: '/projects',
+        element: isAuthenticated ? <FullLayout /> : <Navigate to="/auth/login" />,
+        children: [
+            { path: '/projects', element: <Project /> },
+            { path: '/projects/add', element: <ProjectAdd /> },
+            { path: '/projects/edit/:id', element: <ProjectEdit /> },
         ],
     },
     {

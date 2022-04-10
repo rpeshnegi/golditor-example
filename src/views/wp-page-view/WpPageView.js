@@ -10,7 +10,7 @@ const WpPageView = () => {
 	const [Component, setComponent] = useState(null)
 	const [pageData, setPageData] = useState(null)
 
-	console.log('Component', slug)
+	// console.log('Component', slug)
 
 	useEffect(() => {
 		if (slug) {
