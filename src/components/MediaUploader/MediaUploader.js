@@ -1,6 +1,7 @@
+/* eslint-disable react/no-array-index-key */
 import React, { useState, useCallback } from 'react';
 import {
-    Grid, Box, List
+    Grid, Box
 } from '@material-ui/core';
 
 import { useDropzone } from 'react-dropzone'
@@ -16,7 +17,7 @@ const MediaUploader = (props) => {
         setToUploadFiles((state) => [...state, ...acceptedFiles])
         // Do something with the files
     }, [])
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: 'image/*, audio/*, video/*' })
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop })
 
     return (
         <>
@@ -34,24 +35,24 @@ const MediaUploader = (props) => {
                     }
                 </Box>
             </Grid>
-            <Grid item lg={12} md={12} sm={12}>
-                {mediaFiles.length > 0 &&
-                    <List sx={{ width: '100%', maxWidth: 560, bgcolor: 'background.paper' }}>
-                        {mediaFiles.map((file, index) => (
-                            // eslint-disable-next-line react/no-array-index-key
-                            <MediaItem key={`media_uploaded_${index}`} setMediaFiles={setMediaFiles} media={file} />
-                        ))}
-                    </List>
-                }
-                {toUploadFiles.length > 0 &&
-                    <List sx={{ width: '100%', maxWidth: 560, bgcolor: 'background.paper' }}>
-                        {toUploadFiles.map((file, index) => (
-                            // eslint-disable-next-line react/no-array-index-key
+            {mediaFiles.length > 0 &&
+                <Grid container spacing={0}>
+                    {mediaFiles.map((file) => (
+                        <Grid item xs={12} sm={4} lg={3} key={file.id}>
+                            <MediaItem key={file.id} setMediaFiles={setMediaFiles} media={file} />
+                        </Grid>
+                    ))}
+                </Grid>
+            }
+            {toUploadFiles.length > 0 &&
+                <Grid container spacing={0}>
+                    {toUploadFiles.map((file, index) => (
+                        <Grid item xs={12} sm={4} lg={3} key={`media_grid_${index}`}>
                             <UploadMediaItem key={`media_item_${index}`} moduleData={moduleData} setToUploadFiles={setToUploadFiles} setMediaFiles={setMediaFiles} media={file} />
-                        ))}
-                    </List>
-                }
-            </Grid>
+                        </Grid>
+                    ))}
+                </Grid>
+            }
         </>
     );
 };

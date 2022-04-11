@@ -1,13 +1,20 @@
 import React from 'react';
 
 import {
-    Box, Divider, Button
-    , ListItem
-    , ListItemText
+    Button,
+    Card, CardActions,
+    Typography
 } from '@material-ui/core';
+import FeatherIcon from 'feather-icons-react';
 import { deleteRecord } from '../../utils/common';
 
 const MediaItem = ({ media, setMediaFiles }) => {
+
+    let renderComp = ''
+    if (media.mime_type.includes('image')) renderComp = <Image media={media} />
+    else if (media.mime_type.includes('video')) renderComp = <Video media={media} />
+    else if (media.mime_type.includes('audio')) renderComp = <Audio media={media} />
+    else renderComp = <File media={media} />
 
     const deleteMedia = () => {
         deleteRecord(media.id)
@@ -17,47 +24,64 @@ const MediaItem = ({ media, setMediaFiles }) => {
     }
 
     return (
-        <Box>
-            <ListItem alignItems="flex-start">
-                <Box mr={2}>
-                    {media.mime_type.includes('video') ?
-                        <video width="250" height="150" controls>
-                            <source src={media.source_url} type={media.mime_type} />
-                            <track kind="captions" />
-                            Your browser does not support the video tag.
-                        </video>
-                        :
-                        (media.mime_type.includes('audio') ?
-                            <audio controls>
-                                <source src={media.source_url} type={media.mime_type} />
-                                <track kind="captions" />
-                                Your browser does not support the audio element.
-                            </audio>
-                            : <img style={{ width: '100%', maxWidth: 180 }} alt={media.title.raw} src={media.source_url} />
-                        )
-                    }
-                </Box>
-                <ListItemText secondaryTypographyProps={{
-                    marginTop: "10px"
-                }}
-                    primary={media.title.raw} secondary={
-                        <>
-                            <Button sx={{ mt: 1 }}
-                                variant="contained"
-                                color="primary"
-                                size="small"
-                                type="button"
-                                onClick={deleteMedia}
-                            >
-                                Delete
-                            </Button>
-                        </>
-                    }
-                />
-            </ListItem>
-            <Divider variant="inset" component="li" />
-        </Box>
+
+        <Card
+            sx={{
+                textAlign: 'center',
+                height: '250px'
+            }}
+        >
+            {renderComp}
+            <CardActions disableSpacing sx={{ padding: 0, display: 'block' }}>
+                <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    type="button"
+                    onClick={deleteMedia}
+                >
+                    Delete
+                </Button>
+            </CardActions>
+        </Card>
     );
 }
 
 export default MediaItem;
+
+
+const File = ({ media }) => {
+    return (
+        <>
+            <FeatherIcon size="150px" icon="file" />
+            <Typography
+                color="textSecondary"
+                sx={{
+                    fontSize: '14px',
+                    mt: '10px',
+                }}
+            >
+                {media.title.rendered}
+            </Typography>
+        </>
+    )
+}
+const Image = ({ media }) => (<img style={{ width: 'auto', height: '85%' }} alt={media.title.raw} src={media.source_url} />)
+const Video = ({ media }) => {
+    return (
+        <video width="250" height="150" controls>
+            <source src={media.source_url} type={media.mime_type} />
+            <track kind="captions" />
+            Your browser does not support the video tag.
+        </video>
+    )
+}
+const Audio = ({ media }) => {
+    return (
+        <audio controls>
+            <source src={media.source_url} type={media.mime_type} />
+            <track kind="captions" />
+            Your browser does not support the audio element.
+        </audio>
+    )
+}
